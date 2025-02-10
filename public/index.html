@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hak Sahipleri Listesi - (2020 öncesi)</title>
+    
+    <!-- AG Grid CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@30.2.1/styles/ag-grid.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@30.2.1/styles/ag-theme-alpine.css">
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f7;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+
+        #myGrid {
+            height: 600px;
+            width: 100%;
+        }
+
+        .ag-theme-alpine {
+            --ag-font-size: 14px;
+            --ag-header-background-color: #f8f8f8;
+            --ag-header-foreground-color: #333;
+            --ag-row-hover-color: #f0f7ff;
+        }
+
+        /* Search bar stilleri */
+        #quickFilter {
+            width: 100%;
+            max-width: 400px;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        /* Export buton stilleri */
+        .exportBtn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007acc;
+            color: white;
+            cursor: pointer;
+            margin-bottom: 15px;
+            margin-right: 10px;
+        }
+
+        .exportBtn:hover {
+            background-color: #005fa3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Hak Sahipleri Listesi - (2020 öncesi)</h1>
+        <!-- Quick filter ve Export buton alanı -->
+        <input type="text" id="quickFilter" placeholder="Ara...">
+        <button id="exportCsv" class="exportBtn">Export CSV</button>
+        <button id="exportPdf" class="exportBtn">Export PDF</button>
+        <button id="exportJpg" class="exportBtn">Export JPG</button>
+        <div id="myGrid" class="ag-theme-alpine"></div>
+    </div>
+
+    <!-- AG Grid JS -->
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@30.2.1/dist/ag-grid-community.min.js"></script>
+    <!-- html2canvas ve jsPDF kütüphanelerini ekleyin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script>
+        // gridOptions tanımlaması
+        const gridOptions = {
+            columnDefs: [
+                { field: "ilce", headerName: "İLÇE", sortable: true, filter: true },
+                { field: "koyMah", headerName: "KÖY", sortable: true, filter: true },
+                { field: "adSoyad", headerName: "Ad Soyad", sortable: true, filter: true },
+                { field: "tckn", headerName: "TCKN", sortable: true, filter: true },
+                { field: "afetTarihi", headerName: "Afet Tarihi", sortable: true, filter: true },
+                { field: "afetTuru", headerName: "Afet Türü", sortable: true, filter: true }
+            ],
+            defaultColDef: {
+                flex: 1,
+                minWidth: 110,
+                resizable: true,
+                filter: true,
+                sortable: true
+            },
+            rowData: [],  // İlk başta boş; veri yüklediğimizde güncellenecek
+            pagination: true,
+            paginationPageSize: 10,
+            enableRangeSelection: true,
+            animateRows: true,
+            rowSelection: 'multiple',
+            localeText: {
+                page: "Sayfa",
+                to: "-",
+                of: "/",
+                next: "İleri",
+                last: "Son",
+                first: "İlk",
+                previous: "Geri",
+                loadingOoo: "Yükleniyor...",
+                noRowsToShow: "Gösterilecek kayıt bulunamadı"
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const gridDiv = document.querySelector('#myGrid');
+            // AG Grid nesnesini oluşturun
+            new agGrid.Grid(gridDiv, gridOptions);
+
+            // Quick filter (arama) event handler bağlanıyor
+            const quickFilterInput = document.getElementById('quickFilter');
+            quickFilterInput.addEventListener('input', (event) => {
+                gridOptions.api.setQuickFilter(event.target.value);
+            });
+
+            // Export CSV butonu event handler
+            document.getElementById('exportCsv').addEventListener('click', () => {
+                gridOptions.api.exportDataAsCsv();
+            });
+
+            // Export PDF butonu event handler
+            document.getElementById('exportPdf').addEventListener('click', async () => {
+                // html2canvas ile grid'i görüntü olarak yakala
+                html2canvas(document.querySelector('#myGrid')).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    // jsPDF kullanarak PDF oluşturun (landscape)
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF('landscape', 'pt', [canvas.width, canvas.height]);
+                    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                    pdf.save("grid-export.pdf");
+                });
+            });
+
+            // Export JPG butonu event handler
+            document.getElementById('exportJpg').addEventListener('click', async () => {
+                html2canvas(document.querySelector('#myGrid')).then(canvas => {
+                    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                    // Basit bir indirme işlemi için link elemanı oluştur
+                    const link = document.createElement('a');
+                    link.download = 'grid-export.jpg';
+                    link.href = imgData;
+                    link.click();
+                });
+            });
+
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                // Yüklenen veriyi grid'e aktarın
+                gridOptions.api.setRowData(data);
+            } catch (error) {
+                console.error('Veri yükleme hatası:', error);
+            }
+        });
+    </script>
+</body>
+</html>
